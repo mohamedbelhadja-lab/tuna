@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { getThemeOfTheDay } from "@/lib/themes";
 
 type Video = {
   id: string;
@@ -13,12 +14,14 @@ export default function PlaylistPage() {
   const [likes, setLikes] = useState<number[]>([]);
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
 
+  // Fetch submissions for today's theme
   useEffect(() => {
     async function fetchSubmissions() {
+      const theme = getThemeOfTheDay();
       const { data } = await supabase
         .from("submissions")
         .select("*")
-        .eq("theme", localStorage.getItem("theme"))
+        .eq("theme", theme) // filter by today's theme
         .order("created_at", { ascending: false });
 
       setVideos(
@@ -32,30 +35,28 @@ export default function PlaylistPage() {
     fetchSubmissions();
   }, []);
 
+  // Toggle like for a video (local only for now)
   function toggleLike(index: number) {
     setLikes((prev) =>
-      prev.includes(index)
-        ? prev.filter((i) => i !== index)
-        : [...prev, index]
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
     );
   }
 
+  // Show/hide embedded YouTube player
   function togglePlayer(videoId: string) {
     setActiveVideo((prev) => (prev === videoId ? null : videoId));
   }
 
   return (
-    <main>
+    <main style={{ padding: 24 }}>
       <h1>Today's Playlist</h1>
       <p className="lead">Tap a song to play it</p>
 
-      <div style={{ marginTop: 16 }}>
-        {videos.length === 0 && (
-          <p style={{ opacity: 0.6 }}>No submissions yet.</p>
-        )}
+      {videos.length === 0 && <p style={{ opacity: 0.6 }}>No submissions yet.</p>}
 
+      <div style={{ marginTop: 16 }}>
         {videos.map((video, index) => (
-          <div key={index} className="card">
+          <div key={video.id} className="card" style={{ marginBottom: 16 }}>
             {/* Clickable area */}
             <div
               style={{ display: "flex", gap: 12, cursor: "pointer" }}
@@ -67,7 +68,6 @@ export default function PlaylistPage() {
                 width={120}
                 style={{ borderRadius: 8 }}
               />
-
               <div className="meta">
                 <div className="title">{video.title}</div>
                 <div className="sub">YouTube • anonymous</div>
