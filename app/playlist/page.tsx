@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 type Video = {
   id: string;
@@ -13,9 +14,23 @@ export default function PlaylistPage() {
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("playlist") || "[]");
-    setVideos(stored);
-  }, []);
+  async function fetchSubmissions() {
+    const { data } = await supabase
+      .from("submissions")
+      .select("*")
+      .eq("theme", localStorage.getItem("theme"))
+      .order("created_at", { ascending: false });
+
+    setVideos(
+      data?.map((item) => ({
+        id: item.video_id,
+        title: item.title,
+      })) || []
+    );
+  }
+
+  fetchSubmissions();
+  se changes on }, []);
 
   function toggleLike(index: number) {
     setLikes((prev) =>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 /* ------------------ DAILY THEMES ------------------ */
 
@@ -76,34 +77,29 @@ export default function HomePage() {
   /* Submit logic */
   async function handleSubmit() {
     const videoId = getVideoId(youtubeLink);
-    if (!videoId) return alert("Please paste a valid YouTube link");
-
+    if (!videoId) return alert("Invalid YouTube link");
+  
     setLoading(true);
-
+  
     try {
       const res = await fetch(
         `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
       );
       const data = await res.json();
-
-      const newEntry = {
-        id: videoId,
+  
+      await supabase.from("submissions").insert({
+        video_id: videoId,
         title: data.title,
-      };
-
-      const existing = JSON.parse(localStorage.getItem("playlist") || "[]");
-
-      localStorage.setItem(
-        "playlist",
-        JSON.stringify([...existing, newEntry])
-      );
-
+        theme,
+      });
+  
       window.location.href = "/success";
     } catch (err) {
-      alert("Could not fetch video information");
+      alert("Submission failed");
       setLoading(false);
     }
   }
+  
 
   return (
     <main>
