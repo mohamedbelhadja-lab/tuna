@@ -14,22 +14,22 @@ export default function PlaylistPage() {
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
 
   useEffect(() => {
-  async function fetchSubmissions() {
-    const { data } = await supabase
-      .from("submissions")
-      .select("*")
-      .eq("theme", localStorage.getItem("theme"))
-      .order("created_at", { ascending: false });
+    async function fetchSubmissions() {
+      const { data } = await supabase
+        .from("submissions")
+        .select("*")
+        .eq("theme", localStorage.getItem("theme"))
+        .order("created_at", { ascending: false });
 
-    setVideos(
-      data?.map((item) => ({
-        id: item.video_id,
-        title: item.title,
-      })) || []
-    );
-  }
+      setVideos(
+        data?.map((item) => ({
+          id: item.video_id,
+          title: item.title,
+        })) || []
+      );
+    }
 
-  fetchSubmissions();
+    fetchSubmissions();
   }, []);
 
   function toggleLike(index: number) {
