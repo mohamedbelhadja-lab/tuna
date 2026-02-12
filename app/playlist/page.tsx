@@ -30,7 +30,7 @@ export default function PlaylistPage() {
   }
 
   fetchSubmissions();
-  se changes on }, []);
+  }, []);
 
   function toggleLike(index: number) {
     setLikes((prev) =>
