@@ -1,0 +1,125 @@
+:root{
+  --bg: #ffffff;
+  --muted: #6b7280;
+  --accent: #111827;
+  --card: #f8fafc;
+  --radius: 12px;
+  --max-width: 680px;
+  --gap: 16px;
+  --nav-height: 64px;
+}
+
+/* Reset-ish */
+* { box-sizing: border-box; }
+html,body,#root { height: 100%; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: var(--bg);
+  color: var(--accent);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+/* Container used on main pages to keep content narrow on large screens */
+.app-content {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Headings */
+h1 {
+  margin: 0 0 8px;
+  font-size: 1.5rem; /* ~24px */
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+h2 { font-size: 1.125rem; margin: 0 0 8px; font-weight: 600; }
+
+/* Text helpers */
+.lead { color: var(--muted); margin-bottom: 12px; }
+
+/* Input / Button */
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #e6e9ef;
+  background: white;
+  font-size: 1rem;
+  outline: none;
+  transition: box-shadow .12s, border-color .12s;
+}
+.input:focus { box-shadow: 0 4px 18px rgba(17,24,39,0.06); border-color:#cbd5e1; }
+
+.btn {
+  display: inline-block;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #111827;
+  color: white;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  text-align: center;
+  font-size: 1rem;
+}
+.btn:active { transform: translateY(1px); }
+.btn.secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid #e6e9ef;
+}
+
+/* Playlist items */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.card .meta { flex: 1; }
+.card .title { font-weight: 600; margin-bottom: 4px; }
+.card .sub { font-size: 0.9rem; color: var(--muted); }
+
+/* Bottom nav (keeps the feel consistent) */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-height);
+  border-top: 1px solid #f1f5f9;
+  background: white;
+  display: flex;
+  gap: 8px;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 80;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.bottom-nav a {
+  text-decoration: none;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.bottom-nav a.active { color: var(--accent); }
+
+/* Make sure content doesn't hide behind the nav */
+.body-with-nav { padding-bottom: calc(var(--nav-height) + 18px); }
+
+/* Small screens tweaks */
+@media (max-width: 480px) {
+  h1 { font-size: 1.25rem; }
+  .app-content { padding: 16px; }
+  :root { --max-width: 480px; }
+}
