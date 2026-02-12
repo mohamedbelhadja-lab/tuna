@@ -48,15 +48,26 @@ export default function PlaylistPage() {
   }
 
   return (
-    <main style={{ padding: 24 }}>
+    <main style={{ padding: 24, maxWidth: 600, margin: "0 auto" }}>
       <h1>Today's Playlist</h1>
       <p className="lead">Tap a song to play it</p>
 
-      {videos.length === 0 && <p style={{ opacity: 0.6 }}>No submissions yet.</p>}
+      {videos.length === 0 && (
+        <p style={{ opacity: 0.6, marginTop: 12 }}>No submissions yet.</p>
+      )}
 
       <div style={{ marginTop: 16 }}>
         {videos.map((video, index) => (
-          <div key={video.id} className="card" style={{ marginBottom: 16 }}>
+          <div
+            key={video.id}
+            className="card"
+            style={{
+              marginBottom: 20,
+              padding: 12,
+              border: "1px solid #eee",
+              borderRadius: 12,
+            }}
+          >
             {/* Clickable area */}
             <div
               style={{ display: "flex", gap: 12, cursor: "pointer" }}
@@ -68,9 +79,19 @@ export default function PlaylistPage() {
                 width={120}
                 style={{ borderRadius: 8 }}
               />
-              <div className="meta">
-                <div className="title">{video.title}</div>
-                <div className="sub">YouTube • anonymous</div>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: 16,
+                    marginBottom: 4,
+                  }}
+                >
+                  {video.title}
+                </div>
+                <div style={{ fontSize: 12, color: "#666" }}>
+                  YouTube • anonymous
+                </div>
               </div>
             </div>
 
@@ -95,7 +116,12 @@ export default function PlaylistPage() {
               <button
                 onClick={() => toggleLike(index)}
                 className="btn secondary"
-                style={{ width: 56, padding: 8 }}
+                style={{
+                  width: 56,
+                  padding: 8,
+                  borderRadius: 8,
+                  cursor: "pointer",
+                }}
               >
                 {likes.includes(index) ? "❤️" : "🤍"}
               </button>
