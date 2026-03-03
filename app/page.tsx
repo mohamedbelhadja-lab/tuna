@@ -27,6 +27,7 @@ export default function HomePage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [link, setLink] = useState("");
+  const [reason, setReason] = useState(""); // ← NEW
   const [loading, setLoading] = useState(false);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [time, setTime] = useState("");
@@ -73,6 +74,7 @@ export default function HomePage() {
         video_id: videoId,
         title: data.title,
         theme,
+        reason: reason.trim() || null, // ← NEW
         user_id: user.id,
         submitter: user.user_metadata?.full_name ?? "anonymous",
       });
@@ -132,6 +134,8 @@ export default function HomePage() {
         {/* Submission form */}
         {!alreadySubmitted && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
+
+            {/* YouTube preview */}
             {videoId && (
               <div style={{ border: "2.5px solid var(--ink)", borderRadius: 10, overflow: "hidden", boxShadow: "3px 3px 0 var(--ink)" }}>
                 <img src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`} alt="preview" style={{ width: "100%", display: "block", maxHeight: 160, objectFit: "cover" }} />
@@ -140,12 +144,60 @@ export default function HomePage() {
                 </div>
               </div>
             )}
+
+            {/* Link input */}
             <div style={{ border: `2.5px solid ${link ? "var(--red)" : "var(--ink)"}`, borderRadius: 10, background: "var(--white)", boxShadow: link ? "3px 3px 0 var(--red)" : "3px 3px 0 var(--ink)", transition: "all .18s" }}>
               <p style={{ padding: "10px 16px 0", fontFamily: "var(--fb)", fontSize: 11, fontWeight: 800, color: "var(--faded)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Your pick</p>
-              <input value={link} onChange={e => setLink(e.target.value)} placeholder="paste youtube link here..."
-                style={{ display: "block", width: "100%", border: "none", outline: "none", background: "transparent", color: "var(--ink)", fontFamily: "var(--fb)", fontWeight: 800, fontSize: 16, padding: "8px 16px 14px" }} />
+              <input
+                value={link}
+                onChange={e => setLink(e.target.value)}
+                placeholder="paste youtube link here..."
+                style={{ display: "block", width: "100%", border: "none", outline: "none", background: "transparent", color: "var(--ink)", fontFamily: "var(--fb)", fontWeight: 800, fontSize: 16, padding: "8px 16px 14px" }}
+              />
             </div>
-            <button onClick={handleSubmit} disabled={!videoId || loading} style={{ width: "100%", border: "2.5px solid var(--ink)", borderRadius: 10, background: videoId && !loading ? "var(--red)" : "var(--cream2)", color: videoId && !loading ? "#fff" : "var(--faded)", fontFamily: "var(--fd)", fontSize: 24, letterSpacing: "0.06em", padding: "16px", cursor: videoId && !loading ? "pointer" : "not-allowed", boxShadow: videoId && !loading ? "4px 4px 0 var(--ink)" : "none", transition: "all .15s" }}>
+
+            {/* ── NEW: Reason / comment field ── */}
+            <div style={{ border: "2.5px solid var(--ink)", borderRadius: 10, background: "var(--white)", boxShadow: "3px 3px 0 var(--ink)" }}>
+              <p style={{ padding: "10px 16px 0", fontFamily: "var(--fb)", fontSize: 11, fontWeight: 800, color: "var(--faded)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                Why this song?{" "}
+                <span style={{ color: "var(--border)", fontWeight: 700, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+              </p>
+              <textarea
+                value={reason}
+                onChange={e => setReason(e.target.value)}
+                placeholder="tell us why you picked this one..."
+                maxLength={280}
+                rows={3}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  border: "none",
+                  outline: "none",
+                  background: "transparent",
+                  color: "var(--ink)",
+                  fontFamily: "var(--fb)",
+                  fontWeight: 800,
+                  fontSize: 14,
+                  padding: "8px 16px 14px",
+                  resize: "none",
+                  boxSizing: "border-box",
+                  lineHeight: 1.5,
+                }}
+              />
+              {reason.length > 0 && (
+                <p style={{ padding: "0 16px 10px", fontFamily: "var(--fb)", fontSize: 10, fontWeight: 700, color: reason.length > 250 ? "var(--red)" : "var(--border)", textAlign: "right" }}>
+                  {reason.length}/280
+                </p>
+              )}
+            </div>
+            {/* ── END: Reason / comment field ── */}
+
+            {/* Submit button */}
+            <button
+              onClick={handleSubmit}
+              disabled={!videoId || loading}
+              style={{ width: "100%", border: "2.5px solid var(--ink)", borderRadius: 10, background: videoId && !loading ? "var(--red)" : "var(--cream2)", color: videoId && !loading ? "#fff" : "var(--faded)", fontFamily: "var(--fd)", fontSize: 24, letterSpacing: "0.06em", padding: "16px", cursor: videoId && !loading ? "pointer" : "not-allowed", boxShadow: videoId && !loading ? "4px 4px 0 var(--ink)" : "none", transition: "all .15s" }}
+            >
               {loading ? <span style={{ display: "inline-block", width: 20, height: 20, border: "3px solid #fff", borderTopColor: "transparent", borderRadius: "50%", animation: "spin .7s linear infinite", verticalAlign: "middle" }} /> : "SUBMIT YOUR PICK →"}
             </button>
             <p style={{ textAlign: "center", fontFamily: "var(--fb)", fontSize: 11, color: "var(--faded)", fontWeight: 700 }}>one submission per person · results at midnight</p>
