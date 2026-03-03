@@ -19,6 +19,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="nav-icon">▶</span>
               <span>PLAYLIST</span>
             </Link>
+            <Link href="/archive" className={pathname?.startsWith("/archive") ? "active" : ""}>
+              <span className="nav-icon">◫</span>
+              <span>ARCHIVE</span>
+            </Link>
             <Link href="/profile" className={pathname === "/profile" ? "active" : ""}>
               <span className="nav-icon">◎</span>
               <span>PROFILE</span>
