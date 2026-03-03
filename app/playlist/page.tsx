@@ -3,134 +3,134 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getThemeOfTheDay } from "@/lib/themes";
 import Ticker from "@/components/Ticker";
+import type { User } from "@supabase/supabase-js";
 
 type Video = {
-  id: number;         // submission row id (bigint)
-  video_id: string;
+  id: string;
   title: string;
   submitter?: string;
   likes: number;
+  submission_id: number; // bigint from Supabase comes as number in JS
 };
 
 export default function PlaylistPage() {
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [liked, setLiked] = useState<Record<number, boolean>>({});   // keyed by submission id
-  const [active, setActive] = useState<string | null>(null);          // keyed by video_id
-  const [userId, setUserId] = useState<string | null>(null);
-  const [liking, setLiking] = useState<Record<number, boolean>>({});  // optimistic lock
+  const [videos, setVideos]   = useState<Video[]>([]);
+  const [liked, setLiked]     = useState<Record<string, boolean>>({});
+  const [active, setActive]   = useState<string | null>(null);
+  const [user, setUser]       = useState<User | null>(null);
+  const [liking, setLiking]   = useState<Record<string, boolean>>({});
 
-  // ── Load current user ──────────────────────────────────────────────────────
+  // ── Auth ────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserId(user?.id ?? null);
-    });
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) =>
+      setUser(s?.user ?? null)
+    );
+    return () => subscription.unsubscribe();
   }, []);
 
-  // ── Load submissions + like counts ────────────────────────────────────────
+  // ── Load submissions + user's likes ─────────────────────────────────────────
   useEffect(() => {
     async function load() {
       const theme = getThemeOfTheDay();
 
-      // Fetch submissions with live like count via a join
-      const { data } = await supabase
+      // 1. Fetch submissions for today's theme
+      const { data: subs } = await supabase
         .from("submissions")
         .select("id, video_id, title, submitter, likes")
         .eq("theme", theme)
-        .order("likes", { ascending: false })
-        .order("created_at", { ascending: false });
+        .order("likes", { ascending: false });
+
+      if (!subs) return;
 
       setVideos(
-        (data ?? []).map((d) => ({
-          id: d.id,
-          video_id: d.video_id,
+        subs.map(d => ({
+          id: d.video_id,
+          submission_id: d.id,
           title: d.title,
           submitter: d.submitter ?? "anonymous",
           likes: d.likes ?? 0,
         }))
       );
+
+      // 2. If logged in, fetch which ones the user already liked
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userLikes } = await supabase
+        .from("submission_likes")
+        .select("submission_id")
+        .eq("user_id", user.id)
+        .in("submission_id", subs.map(s => s.id));
+
+      if (userLikes) {
+        const likedMap: Record<string, boolean> = {};
+        userLikes.forEach(l => { likedMap[l.submission_id] = true; });
+        setLiked(likedMap);
+      }
     }
+
     load();
   }, []);
 
-  // ── Load which submissions THIS user has liked ────────────────────────────
-  useEffect(() => {
-    if (!userId) return;
-    async function loadMyLikes() {
-      const { data } = await supabase
-        .from("likes")
-        .select("submission_id")
-        .eq("user_id", userId);
+  // ── Like / unlike ───────────────────────────────────────────────────────────
+  async function toggleLike(video: Video) {
+    if (!user) return; // silently ignore — button is hidden for logged-out users
+    if (liking[video.submission_id]) return; // debounce
 
-      const map: Record<number, boolean> = {};
-      (data ?? []).forEach((row) => { map[row.submission_id] = true; });
-      setLiked(map);
-    }
-    loadMyLikes();
-  }, [userId]);
+    setLiking(prev => ({ ...prev, [video.submission_id]: true }));
 
-  // ── Toggle like ───────────────────────────────────────────────────────────
-  async function toggleLike(submissionId: number) {
-    if (!userId) return;                  // must be signed in
-    if (liking[submissionId]) return;     // debounce
+    const alreadyLiked = liked[video.submission_id];
 
-    setLiking((p) => ({ ...p, [submissionId]: true }));
-
-    const alreadyLiked = liked[submissionId];
-
-    // Optimistic UI
-    setLiked((p) => ({ ...p, [submissionId]: !alreadyLiked }));
-    setVideos((prev) =>
-      prev.map((v) =>
-        v.id === submissionId
+    // Optimistic update
+    setLiked(prev => ({ ...prev, [video.submission_id]: !alreadyLiked }));
+    setVideos(prev =>
+      prev.map(v =>
+        v.submission_id === video.submission_id
           ? { ...v, likes: v.likes + (alreadyLiked ? -1 : 1) }
           : v
       )
     );
 
     if (alreadyLiked) {
-      // Unlike: delete row + decrement counter
+      // Remove like
       await supabase
-        .from("likes")
+        .from("submission_likes")
         .delete()
-        .eq("user_id", userId)
-        .eq("submission_id", submissionId);
+        .eq("user_id", user.id)
+        .eq("submission_id", video.submission_id);
 
-      await supabase.rpc("decrement_likes", { submission_id: submissionId });
+      await supabase.rpc("decrement_likes", { submission_id: video.submission_id });
     } else {
-      // Like: insert row + increment counter
-      const { error } = await supabase
-        .from("likes")
-        .insert({ user_id: userId, submission_id: submissionId });
+      // Add like
+      await supabase
+        .from("submission_likes")
+        .insert({ user_id: user.id, submission_id: video.submission_id });
 
-      if (!error) {
-        await supabase.rpc("increment_likes", { submission_id: submissionId });
-      } else {
-        // Roll back optimistic update on error (e.g. duplicate)
-        setLiked((p) => ({ ...p, [submissionId]: alreadyLiked }));
-        setVideos((prev) =>
-          prev.map((v) =>
-            v.id === submissionId
-              ? { ...v, likes: v.likes - 1 }
-              : v
-          )
-        );
-      }
+      await supabase.rpc("increment_likes", { submission_id: video.submission_id });
     }
 
-    setLiking((p) => ({ ...p, [submissionId]: false }));
+    setLiking(prev => ({ ...prev, [video.submission_id]: false }));
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div>
-      <div className="page-header fade-up" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div
+        className="page-header fade-up"
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}
+      >
         <div>
-          <div style={{ fontFamily: "var(--fm)", fontSize: 12, color: "var(--faded)", marginBottom: 6 }}>curated by humans</div>
+          <div style={{ fontFamily: "var(--fm)", fontSize: 12, color: "var(--faded)", marginBottom: 6 }}>
+            curated by humans
+          </div>
           <h1 style={{ fontFamily: "var(--fd)", fontSize: 46, lineHeight: 1 }}>
             TODAY'S<br /><span style={{ color: "var(--red)" }}>MIX</span>
           </h1>
         </div>
-        <span className="stamp" style={{ transform: "rotate(-4deg)", marginTop: 4 }}>{videos.length} TRACKS</span>
+        <span className="stamp" style={{ transform: "rotate(-4deg)", marginTop: 4 }}>
+          {videos.length} TRACKS
+        </span>
       </div>
 
       <Ticker items={["TAP A TRACK TO PLAY", "ZERO ALGORITHMS", "PURE HUMAN TASTE"]} />
@@ -138,14 +138,18 @@ export default function PlaylistPage() {
       <div style={{ padding: "12px 16px" }}>
         {videos.length === 0 && (
           <div style={{ textAlign: "center", padding: "48px 20px" }}>
-            <div style={{ fontFamily: "var(--fd)", fontSize: 32, color: "var(--border)", marginBottom: 12 }}>NO PICKS YET</div>
-            <p style={{ fontFamily: "var(--fb)", fontWeight: 700, color: "var(--faded)", fontSize: 13 }}>be the first to drop a pick →</p>
+            <div style={{ fontFamily: "var(--fd)", fontSize: 32, color: "var(--border)", marginBottom: 12 }}>
+              NO PICKS YET
+            </div>
+            <p style={{ fontFamily: "var(--fb)", fontWeight: 700, color: "var(--faded)", fontSize: 13 }}>
+              be the first to drop a pick →
+            </p>
           </div>
         )}
 
-        {[...videos].sort((a, b) => b.likes - a.likes).map((video, i) => {
-          const isA = active === video.video_id;
-          const isL = liked[video.id];
+        {videos.map((video, i) => {
+          const isA = active === video.id;
+          const isL = !!liked[video.submission_id];
 
           return (
             <div
@@ -159,69 +163,150 @@ export default function PlaylistPage() {
                 animationFillMode: "forwards",
               }}
             >
-              <div style={{ height: 4, background: isA ? "var(--red)" : "var(--cream2)", transition: "background .2s" }} />
-
+              {/* Top accent bar */}
               <div
-                style={{ display: "flex", gap: 10, padding: "10px 10px 10px 12px", cursor: "pointer", alignItems: "center" }}
-                onClick={() => setActive(isA ? null : video.video_id)}
+                style={{
+                  height: 4,
+                  background: isA ? "var(--red)" : "var(--cream2)",
+                  transition: "background .2s",
+                }}
+              />
+
+              {/* Track row */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  padding: "10px 10px 10px 12px",
+                  alignItems: "center",
+                }}
               >
-                <div style={{ fontFamily: "var(--fd)", fontSize: 26, color: isA ? "var(--red)" : "var(--border)", width: 32, flexShrink: 0, lineHeight: 1, textAlign: "right", transition: "color .2s" }}>
-                  {String(i + 1).padStart(2, "0")}
-                </div>
-
-                <div style={{ position: "relative", flexShrink: 0 }}>
-                  <img
-                    src={`https://img.youtube.com/vi/${video.video_id}/mqdefault.jpg`}
-                    alt={video.title}
-                    style={{ width: 72, height: 52, objectFit: "cover", display: "block", borderRadius: 6, border: "2px solid var(--ink)" }}
-                  />
-                  <div style={{ position: "absolute", inset: 0, borderRadius: 6, background: isA ? "rgba(232,52,26,.55)" : "rgba(0,0,0,.18)", display: "flex", alignItems: "center", justifyContent: "center", transition: "background .2s" }}>
-                    <span style={{ color: "#fff", fontSize: 20 }}>{isA ? "⏸" : "▶"}</span>
-                  </div>
-                </div>
-
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "var(--fb)", fontWeight: 800, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{video.title}</div>
-                  <div style={{ fontFamily: "var(--fb)", fontSize: 11, color: "var(--faded)", marginTop: 3, fontWeight: 700 }}>by @{video.submitter}</div>
-                </div>
-
-                {/* ── Like button ── */}
-                <button
-                  onClick={(e) => { e.stopPropagation(); toggleLike(video.id); }}
-                  disabled={!userId}
+                {/* Track number / play indicator — clickable to expand */}
+                <div
+                  onClick={() => setActive(isA ? null : video.id)}
                   style={{
-                    background: isL ? "var(--red)" : "var(--white)",
-                    border: "2px solid " + (isL ? "var(--red)" : "var(--border)"),
-                    borderRadius: 7,
-                    width: 40,
-                    height: 40,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: userId ? "pointer" : "default",
-                    gap: 1,
-                    flexShrink: 0,
-                    transition: "all .15s",
-                    opacity: userId ? 1 : 0.5,
+                    fontFamily: "var(--fd)",
+                    fontSize: 26,
+                    color: isA ? "var(--red)" : "var(--border)",
+                    minWidth: 32,
+                    cursor: "pointer",
+                    userSelect: "none",
+                    transition: "color .2s",
                   }}
                 >
-                  <span style={{ fontSize: 14, color: isL ? "#fff" : "var(--faded)" }}>{isL ? "♥" : "♡"}</span>
-                  <span style={{ fontSize: 9, fontFamily: "var(--ff)", color: isL ? "#fff" : "var(--faded)" }}>{video.likes}</span>
-                </button>
+                  {isA ? "▶" : String(i + 1).padStart(2, "0")}
+                </div>
+
+                {/* Thumbnail */}
+                <img
+                  src={`https://img.youtube.com/vi/${video.id}/mqdefault.jpg`}
+                  alt={video.title}
+                  onClick={() => setActive(isA ? null : video.id)}
+                  style={{
+                    width: 56,
+                    height: 40,
+                    objectFit: "cover",
+                    borderRadius: 6,
+                    border: "2px solid var(--ink)",
+                    flexShrink: 0,
+                    cursor: "pointer",
+                  }}
+                />
+
+                {/* Title + submitter */}
+                <div
+                  onClick={() => setActive(isA ? null : video.id)}
+                  style={{ flex: 1, minWidth: 0, cursor: "pointer" }}
+                >
+                  <p
+                    style={{
+                      fontFamily: "var(--fb)",
+                      fontWeight: 800,
+                      fontSize: 13,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      color: "var(--ink)",
+                      marginBottom: 2,
+                    }}
+                  >
+                    {video.title}
+                  </p>
+                  <p
+                    style={{
+                      fontFamily: "var(--fb)",
+                      fontWeight: 700,
+                      fontSize: 11,
+                      color: "var(--faded)",
+                    }}
+                  >
+                    by {video.submitter}
+                  </p>
+                </div>
+
+                {/* ── Like button ───────────────────────────────────────────── */}
+                {user && (
+                  <button
+                    onClick={() => toggleLike(video)}
+                    disabled={!!liking[video.submission_id]}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 2,
+                      background: isL ? "var(--red)" : "var(--cream2)",
+                      border: `2px solid ${isL ? "var(--red)" : "var(--border)"}`,
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      cursor: liking[video.submission_id] ? "default" : "pointer",
+                      minWidth: 44,
+                      flexShrink: 0,
+                      transition: "all .15s",
+                      boxShadow: isL ? "2px 2px 0 var(--ink)" : "none",
+                    }}
+                  >
+                    <span style={{ fontSize: 14, lineHeight: 1 }}>
+                      {isL ? "♥" : "♡"}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "var(--ff)",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: isL ? "#fff" : "var(--faded)",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      {video.likes}
+                    </span>
+                  </button>
+                )}
+
+                {/* Show like count (no button) for logged-out users */}
+                {!user && video.likes > 0 && (
+                  <span
+                    style={{
+                      fontFamily: "var(--ff)",
+                      fontSize: 10,
+                      color: "var(--faded)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    ♥ {video.likes}
+                  </span>
+                )}
               </div>
 
+              {/* Expanded YouTube embed */}
               {isA && (
-                <div style={{ padding: "0 12px 12px" }}>
+                <div style={{ borderTop: "2px solid var(--ink)" }}>
                   <iframe
                     width="100%"
-                    height="195"
-                    src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1`}
-                    title={video.title}
-                    frameBorder="0"
+                    height="200"
+                    src={`https://www.youtube.com/embed/${video.id}?autoplay=1`}
                     allow="autoplay; encrypted-media"
                     allowFullScreen
-                    style={{ display: "block", borderRadius: 8, border: "2px solid var(--ink)" }}
+                    style={{ display: "block", border: "none" }}
                   />
                 </div>
               )}
