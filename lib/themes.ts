@@ -52,12 +52,38 @@ export const themes = [
   "Song that sounds like driving into a city at night",
 ];
 
+const START_DATE = new Date("2026-01-01");
+
+function diffDaysFromStart(date: Date): number {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const start = new Date(START_DATE);
+  start.setHours(0, 0, 0, 0);
+  return Math.floor((d.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 export function getThemeOfTheDay(): string {
-  const startDate = new Date("2026-01-01");
+  return getThemeForDate(new Date());
+}
+
+export function getThemeForDate(date: Date): string {
+  const diff = diffDaysFromStart(date);
+  if (diff < 0) return themes[0];
+  return themes[diff % themes.length];
+}
+
+/** Returns an array of past days (not including today), most recent first.
+ *  Each entry has the date string (YYYY-MM-DD) and its theme. */
+export function getPastDays(limit = 30): Array<{ dateStr: string; date: Date; theme: string }> {
   const today = new Date();
-  const diffDays = Math.floor(
-    (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const index = diffDays % themes.length;
-  return themes[index];
+  today.setHours(0, 0, 0, 0);
+
+  const results = [];
+  for (let i = 1; i <= limit; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    results.push({ dateStr, date: d, theme: getThemeForDate(d) });
+  }
+  return results;
 }
