@@ -36,6 +36,7 @@ export default function PlaylistPage() {
         .from("submissions")
         .select("id, video_id, title, submitter, likes")
         .eq("theme", theme)
+        .order("likes", { ascending: false })
         .order("created_at", { ascending: false });
 
       setVideos(
@@ -142,7 +143,7 @@ export default function PlaylistPage() {
           </div>
         )}
 
-        {videos.map((video, i) => {
+        {[...videos].sort((a, b) => b.likes - a.likes).map((video, i) => {
           const isA = active === video.video_id;
           const isL = liked[video.id];
 
