@@ -1,38 +1,30 @@
 "use client";
-
 import Link from "next/link";
-import "./globals.css";
 import { usePathname } from "next/navigation";
+import "./globals.css";
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-
   return (
     <html lang="en">
-      <body className="body-with-nav">
-        <div className="app-content">{children}</div>
-
-        {/* Bottom navigation */}
-        <nav className="bottom-nav" aria-label="Primary">
-          <Link href="/" className={pathname === "/" ? "active" : ""}>
-            🏠 <span style={{ display: "block", fontSize: 12 }}>Home</span>
-          </Link>
-
-          <Link
-            href="/playlist"
-            className={pathname?.startsWith("/playlist") ? "active" : ""}
-          >
-            🎶 <span style={{ display: "block", fontSize: 12 }}>Playlist</span>
-          </Link>
-
-          <Link href="/profile" className={pathname === "/profile" ? "active" : ""}>
-            👤 <span style={{ display: "block", fontSize: 12 }}>Profile</span>
-          </Link>
-        </nav>
+      <body>
+        <div className="app-content">
+          <div style={{ paddingBottom: 80 }}>{children}</div>
+          <nav className="bottom-nav" aria-label="Primary">
+            <Link href="/" className={pathname === "/" ? "active" : ""}>
+              <span className="nav-icon">♪</span>
+              <span>TODAY</span>
+            </Link>
+            <Link href="/playlist" className={pathname?.startsWith("/playlist") ? "active" : ""}>
+              <span className="nav-icon">▶</span>
+              <span>PLAYLIST</span>
+            </Link>
+            <Link href="/profile" className={pathname === "/profile" ? "active" : ""}>
+              <span className="nav-icon">◎</span>
+              <span>PROFILE</span>
+            </Link>
+          </nav>
+        </div>
       </body>
     </html>
   );
