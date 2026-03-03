@@ -5,8 +5,6 @@ export const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// ── Auth ─────────────────────────────────────────────────────────────────────
-
 export async function signInWithGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
@@ -27,8 +25,6 @@ export async function getUser() {
   return user;
 }
 
-// ── Submissions ───────────────────────────────────────────────────────────────
-
 export async function hasSubmittedToday(userId: string, theme: string): Promise<boolean> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -43,10 +39,3 @@ export async function hasSubmittedToday(userId: string, theme: string): Promise<
 
   return !!data;
 }
-```
-
-Make sure your `.env.local` has all three variables:
-```
-NEXT_PUBLIC_SUPABASE_URL=https://xyupxjvxyqbgistlubwi.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_LrxsEieCUhQZrBWM2dVAFQ_PBCPcLS0
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
