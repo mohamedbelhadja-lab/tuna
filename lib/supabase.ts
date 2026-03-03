@@ -1,6 +1,35 @@
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+export const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export async function signInWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: `${window.location.origin}/auth/callback` },
+  });
+  if (error) throw error;
+}
+
+export async function signOut() {
+  await supabase.auth.signOut();
+}
+
+export async function getUser() {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
+
+export async function hasSubmittedToday(userId: string, theme: string): Promise<boolean> {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const { data } = await supabase
+    .from("submissions")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("theme", theme)
+    .gte("created_at", today.toISOString())
+    .maybeSingle();
+  return !!data;
+}
