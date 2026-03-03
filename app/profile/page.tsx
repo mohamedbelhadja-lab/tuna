@@ -192,13 +192,6 @@ export default function ProfilePage() {
             accent="var(--red)"
           />
 
-          {/* 2 — Smart Recommendations */}
-          <ComingSoonCard
-            icon="⚡"
-            title="SMART RECOMMENDATIONS"
-            desc="The algorithm learns from what you pick and what you vibe with. Get a daily shortlist of tracks curated just for you."
-            accent="#7C3AED"
-          />
 
           {/* 3 — Listening Personality / Music DNA */}
           <ComingSoonCard
