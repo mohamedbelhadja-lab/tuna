@@ -9,6 +9,7 @@ type Submission = {
   title: string;
   theme: string;
   created_at: string;
+  likes?: number;
 };
 
 // ── Coming Soon card ──────────────────────────────────────────────────────────
@@ -77,7 +78,7 @@ export default function ProfilePage() {
   async function fetchSubmissions(userId: string) {
     const { data } = await supabase
       .from("submissions")
-      .select("video_id, title, theme, created_at")
+      .select("video_id, title, theme, created_at, likes")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(20);
@@ -106,6 +107,13 @@ export default function ProfilePage() {
     s.created_at.slice(0, 10) === new Date().toISOString().slice(0, 10)
   );
 
+  // Derived stats
+  const totalLikesReceived = submissions.reduce((sum, s) => sum + (s.likes ?? 0), 0);
+  const topPick = submissions.reduce<Submission | null>(
+    (best, s) => (!best || (s.likes ?? 0) > (best.likes ?? 0)) ? s : best,
+    null
+  );
+
   if (!user) return (
     <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center" }}>
       <p style={{ fontFamily: "var(--fd)", fontSize: 28, color: "var(--ink)", marginBottom: 16 }}>YOU'RE NOT<br />SIGNED IN</p>
@@ -116,7 +124,7 @@ export default function ProfilePage() {
   return (
     <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", paddingBottom: 80 }}>
 
-      {/* Header */}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={{ padding: "28px 20px 20px", borderBottom: "2.5px solid var(--ink)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
@@ -149,24 +157,72 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* ── Stats grid (2x2) ────────────────────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: "2.5px solid var(--ink)" }}>
-        {[
-          { n: String(submissions.length).padStart(2, "0"), label: "total\nsubmissions" },
-          { n: String(streak).padStart(2, "0"),             label: "day\nstreak 🔥" },
-        ].map((s, i) => (
-          <div key={i} style={{
-            padding: "20px 16px",
-            borderRight: i === 0 ? "1.5px solid var(--border)" : "none",
-          }}>
-            <div style={{ fontFamily: "var(--fd)", fontSize: 54, lineHeight: 1, color: i === 1 && streak > 0 ? "var(--red)" : "var(--ink)" }}>
-              {s.n}
-            </div>
-            <div style={{ fontFamily: "var(--fb)", fontWeight: 700, fontSize: 11, color: "var(--faded)", marginTop: 5, whiteSpace: "pre-line" }}>
-              {s.label}
-            </div>
+
+        {/* Total submissions */}
+        <div style={{ padding: "20px 16px", borderRight: "1.5px solid var(--border)", borderBottom: "1.5px solid var(--border)" }}>
+          <div style={{ fontFamily: "var(--fd)", fontSize: 54, lineHeight: 1, color: "var(--ink)" }}>
+            {String(submissions.length).padStart(2, "0")}
           </div>
-        ))}
+          <div style={{ fontFamily: "var(--fb)", fontWeight: 700, fontSize: 11, color: "var(--faded)", marginTop: 5, whiteSpace: "pre-line" }}>
+            {"total\nsubmissions"}
+          </div>
+        </div>
+
+        {/* Streak */}
+        <div style={{ padding: "20px 16px", borderBottom: "1.5px solid var(--border)" }}>
+          <div style={{ fontFamily: "var(--fd)", fontSize: 54, lineHeight: 1, color: streak > 0 ? "var(--red)" : "var(--ink)" }}>
+            {String(streak).padStart(2, "0")}
+          </div>
+          <div style={{ fontFamily: "var(--fb)", fontWeight: 700, fontSize: 11, color: "var(--faded)", marginTop: 5, whiteSpace: "pre-line" }}>
+            {"day\nstreak 🔥"}
+          </div>
+        </div>
+
+        {/* Likes received */}
+        <div style={{ padding: "20px 16px", borderRight: "1.5px solid var(--border)" }}>
+          <div style={{ fontFamily: "var(--fd)", fontSize: 54, lineHeight: 1, color: totalLikesReceived > 0 ? "var(--red)" : "var(--ink)" }}>
+            {String(totalLikesReceived).padStart(2, "0")}
+          </div>
+          <div style={{ fontFamily: "var(--fb)", fontWeight: 700, fontSize: 11, color: "var(--faded)", marginTop: 5, whiteSpace: "pre-line" }}>
+            {"likes\nreceived ❤️"}
+          </div>
+        </div>
+
+        {/* Top pick */}
+        <div style={{ padding: "20px 16px" }}>
+          {topPick && (topPick.likes ?? 0) > 0 ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                <img
+                  src={`https://img.youtube.com/vi/${topPick.video_id}/mqdefault.jpg`}
+                  alt=""
+                  style={{ width: 36, height: 26, objectFit: "cover", borderRadius: 4, border: "1.5px solid var(--ink)", flexShrink: 0 }}
+                />
+                <span style={{ fontFamily: "var(--fd)", fontSize: 22, color: "var(--red)", lineHeight: 1 }}>
+                  {topPick.likes}♥
+                </span>
+              </div>
+              <p style={{ fontFamily: "var(--fb)", fontWeight: 800, fontSize: 10, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {topPick.title}
+              </p>
+              <div style={{ fontFamily: "var(--fb)", fontWeight: 700, fontSize: 11, color: "var(--faded)", marginTop: 3, whiteSpace: "pre-line" }}>
+                {"top\npick 🏆"}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontFamily: "var(--fd)", fontSize: 54, lineHeight: 1, color: "var(--border)" }}>
+                —
+              </div>
+              <div style={{ fontFamily: "var(--fb)", fontWeight: 700, fontSize: 11, color: "var(--faded)", marginTop: 5, whiteSpace: "pre-line" }}>
+                {"top\npick 🏆"}
+              </div>
+            </>
+          )}
+        </div>
+
       </div>
 
       {/* ── COMING SOON SECTION ─────────────────────────────────────────────── */}
@@ -184,16 +240,31 @@ export default function ProfilePage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
 
-          {/* 1 — Taste Score Machine */}
+          {/* Follow curators */}
           <ComingSoonCard
-            icon="🎯"
-            title="TASTE SCORE MACHINE"
-            desc="Your picks get rated by the crowd. Build a reputation as a tastemaker — see how your curation stacks up against everyone else."
+            icon="👥"
+            title="FOLLOW CURATORS"
+            desc="Subscribe to the people with the best taste. Get notified when your favourite curators drop a new pick."
             accent="var(--red)"
           />
 
+          {/* Taste compatibility */}
+          <ComingSoonCard
+            icon="🎯"
+            title="TASTE COMPATIBILITY"
+            desc="How well does your taste match other curators? Get a compatibility score and find your sonic soulmates."
+            accent="#7C3AED"
+          />
 
-          {/* 3 — Listening Personality / Music DNA */}
+          {/* Curator badges */}
+          <ComingSoonCard
+            icon="🏅"
+            title="CURATOR BADGES"
+            desc="Earn badges for your curation milestones — Tastemaker, Deep Cutter, Streak King, Most Liked and more."
+            accent="#D97706"
+          />
+
+          {/* Music DNA */}
           <ComingSoonCard
             icon="🧬"
             title="MUSIC DNA"
@@ -201,19 +272,10 @@ export default function ProfilePage() {
             accent="#0891B2"
           />
 
-          {/* 4 — Social / Friend Matching */}
-          <ComingSoonCard
-            icon="🤝"
-            title="FRIEND MATCHING"
-            desc="Find your sonic twins. See who shares your taste, follow their picks, and discover people who hear music the same way you do."
-            accent="#059669"
-          />
-
         </div>
       </div>
-      {/* ─────────────────────────────────────────────────────────────────────── */}
 
-      {/* Recent picks */}
+      {/* ── Recent picks ────────────────────────────────────────────────────── */}
       <div style={{ padding: "16px 18px", flex: 1 }}>
         <p style={{ fontFamily: "var(--fb)", fontSize: 11, fontWeight: 800, color: "var(--faded)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>
           Your picks
@@ -252,14 +314,21 @@ export default function ProfilePage() {
                 {s.theme}
               </p>
             </div>
-            <p style={{ fontFamily: "var(--fb)", fontWeight: 700, fontSize: 10, color: "var(--border)", flexShrink: 0 }}>
-              {new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-            </p>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+              {(s.likes ?? 0) > 0 && (
+                <span style={{ fontFamily: "var(--fb)", fontWeight: 800, fontSize: 11, color: "var(--red)" }}>
+                  {s.likes}♥
+                </span>
+              )}
+              <p style={{ fontFamily: "var(--fb)", fontWeight: 700, fontSize: 10, color: "var(--border)" }}>
+                {new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </p>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Sign out */}
+      {/* ── Sign out ─────────────────────────────────────────────────────────── */}
       <div style={{ padding: "0 18px 24px" }}>
         <button
           onClick={async () => { await signOut(); window.location.href = "/"; }}
