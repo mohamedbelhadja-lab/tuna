@@ -47,6 +47,6 @@ export async function hasSubmittedToday(userId: string, theme: string): Promise<
 
 Make sure your `.env.local` has all three variables:
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_URL=https://xyupxjvxyqbgistlubwi.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_LrxsEieCUhQZrBWM2dVAFQ_PBCPcLS0
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
