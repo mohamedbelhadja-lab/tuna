@@ -11,6 +11,57 @@ type Submission = {
   created_at: string;
 };
 
+// ── Coming Soon card ──────────────────────────────────────────────────────────
+function ComingSoonCard({
+  icon, title, desc, accent = "var(--red)",
+}: {
+  icon: string; title: string; desc: string; accent?: string;
+}) {
+  return (
+    <div style={{
+      background: "var(--white)",
+      border: "2px solid var(--ink)",
+      borderRadius: 12,
+      padding: "14px 14px 12px",
+      boxShadow: "3px 3px 0 var(--ink)",
+      display: "flex",
+      gap: 12,
+      alignItems: "flex-start",
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      {/* left accent bar */}
+      <div style={{
+        position: "absolute", left: 0, top: 0, bottom: 0,
+        width: 4, background: accent, borderRadius: "12px 0 0 12px",
+      }} />
+
+      <span style={{ fontSize: 24, flexShrink: 0, marginLeft: 6 }}>{icon}</span>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
+          <p style={{
+            fontFamily: "var(--fd)", fontSize: 15, color: "var(--ink)",
+            lineHeight: 1.1,
+          }}>{title}</p>
+          <span style={{
+            fontFamily: "var(--fb)", fontWeight: 800, fontSize: 9,
+            letterSpacing: "0.08em", textTransform: "uppercase",
+            background: accent, color: "#fff",
+            padding: "2px 6px", borderRadius: 4,
+            flexShrink: 0,
+          }}>SOON</span>
+        </div>
+        <p style={{
+          fontFamily: "var(--fb)", fontWeight: 700, fontSize: 11,
+          color: "var(--faded)", lineHeight: 1.45,
+        }}>{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -117,6 +168,57 @@ export default function ProfilePage() {
           </div>
         ))}
       </div>
+
+      {/* ── COMING SOON SECTION ─────────────────────────────────────────────── */}
+      <div style={{ padding: "20px 18px", borderBottom: "2.5px solid var(--ink)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <p style={{
+            fontFamily: "var(--fb)", fontSize: 11, fontWeight: 800,
+            color: "var(--faded)", letterSpacing: "0.1em", textTransform: "uppercase",
+          }}>
+            unlocking soon
+          </p>
+          <div style={{ flex: 1, height: 1.5, background: "var(--border)", borderRadius: 2 }} />
+          <span style={{ fontSize: 13 }}>🔒</span>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
+          {/* 1 — Taste Score Machine */}
+          <ComingSoonCard
+            icon="🎯"
+            title="TASTE SCORE MACHINE"
+            desc="Your picks get rated by the crowd. Build a reputation as a tastemaker — see how your curation stacks up against everyone else."
+            accent="var(--red)"
+          />
+
+          {/* 2 — Smart Recommendations */}
+          <ComingSoonCard
+            icon="⚡"
+            title="SMART RECOMMENDATIONS"
+            desc="The algorithm learns from what you pick and what you vibe with. Get a daily shortlist of tracks curated just for you."
+            accent="#7C3AED"
+          />
+
+          {/* 3 — Listening Personality / Music DNA */}
+          <ComingSoonCard
+            icon="🧬"
+            title="MUSIC DNA"
+            desc="Uncover your listening personality — are you a Deep Cutter, a Hype Machine, or a Genre Chameleon? Your submission history, decoded."
+            accent="#0891B2"
+          />
+
+          {/* 4 — Social / Friend Matching */}
+          <ComingSoonCard
+            icon="🤝"
+            title="FRIEND MATCHING"
+            desc="Find your sonic twins. See who shares your taste, follow their picks, and discover people who hear music the same way you do."
+            accent="#059669"
+          />
+
+        </div>
+      </div>
+      {/* ─────────────────────────────────────────────────────────────────────── */}
 
       {/* Recent picks */}
       <div style={{ padding: "16px 18px", flex: 1 }}>
