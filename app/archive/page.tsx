@@ -1,220 +1,243 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { getPastDays } from "@/lib/themes";
+import { getThemeForDate } from "@/lib/themes";
 import Ticker from "@/components/Ticker";
 
-type DayEntry = {
-  dateStr: string;
-  date: Date;
-  theme: string;
-  trackCount: number | null; // null = loading
+type Video = {
+  id: string;
+  title: string;
+  submitter: string;
+  likes: number;
+  submission_id: number;
 };
 
-export default function ArchivePage() {
-  const pastDays = getPastDays(30);
-  const [entries, setEntries] = useState<DayEntry[]>(
-    pastDays.map(d => ({ ...d, trackCount: null }))
-  );
+export default function ArchiveDayPage() {
+  const params  = useParams();
+  const router  = useRouter();
+  const dateStr = params.date as string; // e.g. "2026-02-14"
+
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [active, setActive] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [theme, setTheme]   = useState("");
+  const [invalid, setInvalid] = useState(false);
 
   useEffect(() => {
-    async function loadCounts() {
-      // Fetch track counts for all past themes in one query
-      const themes = pastDays.map(d => d.theme);
+    // Validate date format
+    const parsed = new Date(dateStr + "T00:00:00");
+    if (isNaN(parsed.getTime())) { setInvalid(true); return; }
 
+    // Must be in the past
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (parsed >= today) { setInvalid(true); return; }
+
+    const t = getThemeForDate(parsed);
+    setTheme(t);
+
+    async function load() {
       const { data } = await supabase
         .from("submissions")
-        .select("theme")
-        .in("theme", themes);
+        .select("id, video_id, title, submitter, likes")
+        .eq("theme", t)
+        .order("likes", { ascending: false });
 
-      if (!data) return;
-
-      // Count per theme
-      const counts: Record<string, number> = {};
-      data.forEach(row => {
-        counts[row.theme] = (counts[row.theme] ?? 0) + 1;
-      });
-
-      setEntries(
-        pastDays.map(d => ({
-          ...d,
-          trackCount: counts[d.theme] ?? 0,
+      setVideos(
+        (data ?? []).map(d => ({
+          id: d.video_id,
+          submission_id: d.id,
+          title: d.title,
+          submitter: d.submitter ?? "anonymous",
+          likes: d.likes ?? 0,
         }))
       );
+      setLoading(false);
     }
 
-    loadCounts();
-  }, []);
+    load();
+  }, [dateStr]);
 
-  // Only show days that have at least 1 track (or are still loading)
-  const visible = entries.filter(e => e.trackCount === null || e.trackCount > 0);
+  const parsed = new Date(dateStr + "T00:00:00");
+  const formattedDate = isNaN(parsed.getTime()) ? "" : parsed.toLocaleDateString("en-US", {
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
+  });
+
+  if (invalid) {
+    return (
+      <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center" }}>
+        <div style={{ fontFamily: "var(--fd)", fontSize: 28, color: "var(--ink)", marginBottom: 12 }}>
+          INVALID DATE
+        </div>
+        <p style={{ fontFamily: "var(--fb)", fontWeight: 700, color: "var(--faded)", fontSize: 13, marginBottom: 20 }}>
+          That date doesn't exist in the archive.
+        </p>
+        <button
+          onClick={() => router.push("/archive")}
+          style={{
+            fontFamily: "var(--fd)", fontSize: 16, letterSpacing: "0.06em",
+            background: "var(--red)", color: "#fff",
+            border: "2.5px solid var(--ink)", borderRadius: 8,
+            padding: "12px 24px", cursor: "pointer",
+            boxShadow: "3px 3px 0 var(--ink)",
+          }}
+        >
+          ← BACK TO ARCHIVE
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100dvh", paddingBottom: 80 }}>
 
       {/* Header */}
-      <div style={{ padding: "28px 20px 20px", borderBottom: "2.5px solid var(--ink)" }}>
-        <div style={{ fontFamily: "var(--fm)", fontSize: 12, color: "var(--faded)", marginBottom: 6 }}>
-          the vault
+      <div style={{ padding: "20px 20px 16px", borderBottom: "2.5px solid var(--ink)" }}>
+        <button
+          onClick={() => router.push("/archive")}
+          style={{
+            background: "none", border: "none", cursor: "pointer", padding: 0,
+            fontFamily: "var(--ff)", fontSize: 11, letterSpacing: "0.1em",
+            color: "var(--faded)", marginBottom: 16, display: "flex", alignItems: "center", gap: 6,
+          }}
+        >
+          ← ARCHIVE
+        </button>
+
+        <div style={{ fontFamily: "var(--fm)", fontSize: 11, color: "var(--faded)", marginBottom: 6 }}>
+          {formattedDate.toUpperCase()}
         </div>
-        <h1 style={{ fontFamily: "var(--fd)", fontSize: 46, lineHeight: 1 }}>
-          PAST<br /><span style={{ color: "var(--red)" }}>PLAYLISTS</span>
+        <h1 style={{ fontFamily: "var(--fd)", fontSize: "clamp(22px, 6vw, 36px)", lineHeight: 1.1, color: "var(--ink)", marginBottom: 12 }}>
+          {theme}
         </h1>
-        <p style={{ fontFamily: "var(--fb)", fontWeight: 700, fontSize: 13, color: "var(--faded)", marginTop: 10, lineHeight: 1.5 }}>
-          Every prompt. Every pick. All the human taste, archived.
-        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {!loading && (
+            <span style={{
+              fontFamily: "var(--ff)", fontSize: 10, letterSpacing: "0.12em", color: "var(--faded)",
+            }}>
+              {videos.length} TRACK{videos.length !== 1 ? "S" : ""}
+            </span>
+          )}
+          <span className="stamp" style={{ transform: "rotate(-3deg)" }}>
+            THE VAULT
+          </span>
+        </div>
       </div>
 
-      <Ticker items={["THE VAULT", "PURE HUMAN TASTE", "EVERY DAY A NEW PROMPT", "ZERO ALGORITHMS"]} />
+      <Ticker items={["FROM THE VAULT", "HUMAN PICKS ONLY", "ZERO ALGORITHMS", "PURE TASTE"]} />
 
-      <div style={{ padding: "16px 16px" }}>
-        {visible.length === 0 && entries[0]?.trackCount !== null && (
+      <div style={{ padding: "12px 16px" }}>
+        {loading && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 8 }}>
+            {[...Array(4)].map((_, i) => (
+              <div key={i} style={{
+                height: 72, background: "var(--white)",
+                border: "2.5px solid var(--ink)", borderRadius: 12,
+                boxShadow: "3px 3px 0 var(--ink)",
+                animation: "pulse 1.4s ease infinite",
+                animationDelay: `${i * 0.1}s`,
+              }} />
+            ))}
+          </div>
+        )}
+
+        {!loading && videos.length === 0 && (
           <div style={{ textAlign: "center", padding: "48px 20px" }}>
             <div style={{ fontFamily: "var(--fd)", fontSize: 28, color: "var(--border)", marginBottom: 12 }}>
-              NOTHING YET
+              NO PICKS
             </div>
             <p style={{ fontFamily: "var(--fb)", fontWeight: 700, color: "var(--faded)", fontSize: 13 }}>
-              the archive fills up as days go by
+              nobody submitted on this day
             </p>
           </div>
         )}
 
-        {visible.map((entry, i) => {
-          const loading = entry.trackCount === null;
-          const formattedDate = entry.date.toLocaleDateString("en-US", {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-          }).toUpperCase();
-
+        {videos.map((video, i) => {
+          const isA = active === video.id;
           return (
-            <Link
-              key={entry.dateStr}
-              href={`/archive/${entry.dateStr}`}
-              style={{ textDecoration: "none" }}
+            <div
+              key={video.id}
+              className="card"
+              style={{
+                marginBottom: 10,
+                overflow: "hidden",
+                animation: `fadeUp .35s ${i * 0.05}s ease both`,
+                opacity: 0,
+                animationFillMode: "forwards",
+              }}
             >
+              <div style={{ height: 4, background: isA ? "var(--red)" : "var(--cream2)", transition: "background .2s" }} />
+
               <div
-                style={{
-                  background: "var(--white)",
-                  border: "2.5px solid var(--ink)",
-                  borderRadius: 12,
-                  marginBottom: 10,
-                  overflow: "hidden",
-                  boxShadow: "3px 3px 0 var(--ink)",
-                  animation: `fadeUp .35s ${i * 0.04}s ease both`,
-                  opacity: 0,
-                  animationFillMode: "forwards",
-                  transition: "transform .12s, box-shadow .12s",
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.transform = "translate(-1px, -1px)";
-                  (e.currentTarget as HTMLElement).style.boxShadow = "5px 5px 0 var(--ink)";
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.transform = "";
-                  (e.currentTarget as HTMLElement).style.boxShadow = "3px 3px 0 var(--ink)";
-                }}
+                onClick={() => setActive(isA ? null : video.id)}
+                style={{ display: "flex", gap: 10, padding: "10px 12px", alignItems: "center", cursor: "pointer" }}
               >
-                {/* Red top bar */}
-                <div style={{ height: 4, background: i === 0 ? "var(--red)" : "var(--cream2)" }} />
-
-                <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                  {/* Date block */}
-                  <div style={{
-                    flexShrink: 0,
-                    background: i === 0 ? "var(--red)" : "var(--cream2)",
-                    border: "2px solid var(--ink)",
-                    borderRadius: 8,
-                    padding: "6px 10px",
-                    textAlign: "center",
-                    minWidth: 52,
-                  }}>
-                    <div style={{
-                      fontFamily: "var(--ff)",
-                      fontSize: 9,
-                      letterSpacing: "0.1em",
-                      color: i === 0 ? "#fff" : "var(--faded)",
-                    }}>
-                      {entry.date.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}
-                    </div>
-                    <div style={{
-                      fontFamily: "var(--fd)",
-                      fontSize: 26,
-                      lineHeight: 1,
-                      color: i === 0 ? "#fff" : "var(--ink)",
-                    }}>
-                      {entry.date.getDate()}
-                    </div>
-                    <div style={{
-                      fontFamily: "var(--ff)",
-                      fontSize: 8,
-                      letterSpacing: "0.08em",
-                      color: i === 0 ? "rgba(255,255,255,.7)" : "var(--faded)",
-                    }}>
-                      {entry.date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase()}
-                    </div>
-                  </div>
-
-                  {/* Theme */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{
-                      fontFamily: "var(--fd)",
-                      fontSize: 15,
-                      color: "var(--ink)",
-                      lineHeight: 1.2,
-                      marginBottom: 6,
-                    }}>
-                      {entry.theme}
-                    </p>
-                    {loading ? (
-                      <div style={{
-                        width: 60, height: 10,
-                        background: "var(--cream2)",
-                        borderRadius: 4,
-                        animation: "pulse 1.4s ease infinite",
-                      }} />
-                    ) : (
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{
-                          fontFamily: "var(--ff)",
-                          fontSize: 10,
-                          letterSpacing: "0.1em",
-                          color: "var(--faded)",
-                        }}>
-                          {entry.trackCount} TRACK{entry.trackCount !== 1 ? "S" : ""}
-                        </span>
-                        {i === 0 && (
-                          <span style={{
-                            fontFamily: "var(--fb)",
-                            fontWeight: 800,
-                            fontSize: 9,
-                            letterSpacing: "0.08em",
-                            textTransform: "uppercase",
-                            background: "var(--red)",
-                            color: "#fff",
-                            padding: "2px 6px",
-                            borderRadius: 4,
-                          }}>
-                            YESTERDAY
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Arrow */}
-                  <div style={{
-                    fontFamily: "var(--fd)",
-                    fontSize: 20,
-                    color: "var(--border)",
-                    flexShrink: 0,
-                  }}>
-                    →
-                  </div>
+                {/* Track number */}
+                <div style={{
+                  fontFamily: "var(--fd)", fontSize: 24,
+                  color: isA ? "var(--red)" : "var(--border)",
+                  minWidth: 32, flexShrink: 0,
+                  transition: "color .2s",
+                }}>
+                  {isA ? "▶" : String(i + 1).padStart(2, "0")}
                 </div>
+
+                {/* Thumbnail */}
+                <img
+                  src={`https://img.youtube.com/vi/${video.id}/mqdefault.jpg`}
+                  alt={video.title}
+                  style={{
+                    width: 56, height: 40, objectFit: "cover",
+                    borderRadius: 6, border: "2px solid var(--ink)", flexShrink: 0,
+                  }}
+                />
+
+                {/* Title + submitter */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{
+                    fontFamily: "var(--fb)", fontWeight: 800, fontSize: 13,
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                    color: "var(--ink)", marginBottom: 2,
+                  }}>
+                    {video.title}
+                  </p>
+                  <p style={{ fontFamily: "var(--fb)", fontWeight: 700, fontSize: 11, color: "var(--faded)" }}>
+                    by {video.submitter}
+                  </p>
+                </div>
+
+                {/* Likes (read-only in archive) */}
+                {video.likes > 0 && (
+                  <div style={{
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                    background: "var(--cream2)", border: "2px solid var(--border)",
+                    borderRadius: 8, padding: "6px 10px", flexShrink: 0, minWidth: 44,
+                  }}>
+                    <span style={{ fontSize: 12, lineHeight: 1 }}>♥</span>
+                    <span style={{
+                      fontFamily: "var(--ff)", fontSize: 10,
+                      color: "var(--faded)", letterSpacing: "0.05em",
+                    }}>
+                      {video.likes}
+                    </span>
+                  </div>
+                )}
               </div>
-            </Link>
+
+              {/* Expanded embed */}
+              {isA && (
+                <div style={{ borderTop: "2px solid var(--ink)" }}>
+                  <iframe
+                    width="100%"
+                    height="200"
+                    src={`https://www.youtube.com/embed/${video.id}?autoplay=1`}
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen
+                    style={{ display: "block", border: "none" }}
+                  />
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
