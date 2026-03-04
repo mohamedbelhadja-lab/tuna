@@ -1,89 +1,53 @@
 // lib/themes.ts
 export const themes = [
-  // 🎭 Situational / Hyper-specific
-  "Song to play while dramatically staring out a car window",
-  "Song that hits different at 2am",
-  "Song you blast when nobody's home",
-  "Song to pretend you're in a movie trailer",
-  "Song you skip every time but never delete",
-  "Song for when you're late but walking slowly anyway",
-  "Song to listen to right before something big",
-  "Song to clean your room aggressively to",
-  "Song that makes a 10-minute walk feel like 2 minutes",
-  "Song you'd put on at a party to test people",
-  "Song to eat instant noodles alone to at midnight",
-  "Song for sending passive-aggressive 'I'm fine' texts",
-  "Song to feel like a main character on public transport",
-
-  // 🎸 Musical nerdy
-  "Song where the bass line is criminally underrated",
-  "Song that was ruined by a TV ad",
-  "Song that only has one truly perfect moment",
-  "Song you didn't like at first but now can't stop playing",
-  "Song from a genre you thought you hated",
-  "Song that sounds sad but has weirdly upbeat lyrics",
-  "Song that sounds upbeat but is actually devastating",
-  "Song that hits harder when you finally read the lyrics",
-  "Song with a music video that makes zero sense",
-  "Song you only know because of a meme",
-  "Song that sounds like it was made just for you",
-
-  // 😂 Funny / Weird
-  "Song to send to someone you're arguing with, no context",
-  "Song a fictional villain would unironically love",
-  "Song that should not work but absolutely does",
-  "Song your pet would listen to if they had taste",
-  "Song that makes you feel like you have your life together (you don't)",
-  "Song you'd play at your own dramatic movie ending",
-  "Song that makes you want to quit your job and move abroad",
-  "Song that lives rent-free in your head for no reason",
-  "Song that makes you walk 30% faster",
-  "Song to send to your future self",
-
-  // 🌍 Mood / Emotional
-  "Song that makes homesickness feel beautiful",
-  "Song to survive a Monday morning",
-  "Song for when you're proud of yourself but too shy to say it",
-  "Song that feels like a warm hug",
-  "Song that sounds like falling in love for the first time",
-  "Song that sounds like the end of summer",
-  "Song you associate with a specific smell",
-  "Song that makes you feel nostalgic for a time you never lived",
-  "Song that sounds like driving into a city at night",
+  "Song you'd play after scoring the winning goal",
+  "Song for walking out of a job interview",
+  "Song when your food order finally arrives",
+  "Song for the last 10 seconds of a countdown",
+  "Song to walk into a room like you own it",
+  "Song for opening a package you've been waiting for",
+  "Song when your ex texts you first",
+  "Song for parallel parking on the first try",
+  "Song when you wake up before your alarm",
+  "Song for finishing an exam early",
+  "Song when your team wins on the last second",
+  "Song for the moment the plane lands",
+  "Song for jumping into cold water",
+  "Song for leaving work on a Friday",
+  "Song for getting the window seat",
+  "Song when you find money in old jeans",
+  "Song for finally replying to a long text",
+  "Song for the first bite of your favorite meal",
+  "Song when you beat a final boss",
+  "Song for catching a flight you almost missed",
+  "Song for turning off your alarm and going back to sleep",
+  "Song for the moment the Wi-Fi finally connects",
+  "Song when someone cancels plans you didn't want",
+  "Song for walking home after a great night out",
+  "Song for stepping outside on the first warm day of the year",
+  "Song for finishing a 1000-piece puzzle",
+  "Song when your code finally runs without errors",
+  "Song for getting a text back instantly",
+  "Song for the first coffee of the day",
+  "Song for realizing it's a bank holiday tomorrow",
+  "Song for a road trip with no destination",
+  "Song when you're the last one standing in a game",
+  "Song for crossing something off your to-do list",
+  "Song for sneaking snacks into a movie theater",
+  "Song when your crush laughs at your joke",
+  "Song for arriving exactly on time, not a second late",
+  "Song for the last day before a vacation",
+  "Song for telling your boss no for the first time",
+  "Song when your team scores and you predicted it",
+  "Song for finally finishing a show you binged too fast",
 ];
 
-const START_DATE = new Date("2026-01-01");
-
-function diffDaysFromStart(date: Date): number {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  const start = new Date(START_DATE);
-  start.setHours(0, 0, 0, 0);
-  return Math.floor((d.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-}
-
 export function getThemeOfTheDay(): string {
-  return getThemeForDate(new Date());
-}
-
-export function getThemeForDate(date: Date): string {
-  const diff = diffDaysFromStart(date);
-  if (diff < 0) return themes[0];
-  return themes[diff % themes.length];
-}
-
-/** Returns an array of past days (not including today), most recent first.
- *  Each entry has the date string (YYYY-MM-DD) and its theme. */
-export function getPastDays(limit = 30): Array<{ dateStr: string; date: Date; theme: string }> {
+  const startDate = new Date("2026-01-01");
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const results = [];
-  for (let i = 1; i <= limit; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
-    results.push({ dateStr, date: d, theme: getThemeForDate(d) });
-  }
-  return results;
+  const diffDays = Math.floor(
+    (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const index = diffDays % themes.length;
+  return themes[index];
 }
