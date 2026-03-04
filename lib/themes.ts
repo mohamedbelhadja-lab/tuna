@@ -90,3 +90,13 @@ export function getThemeOfTheDay(): string {
   const index = diffDays % themes.length;
   return themes[index];
 }
+
+export function getThemeForDate(date: string): string {
+  const startDate = new Date("2026-01-01");
+  const target = new Date(date);
+  const diffDays = Math.floor(
+    (target.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const index = ((diffDays % themes.length) + themes.length) % themes.length;
+  return themes[index];
+}
